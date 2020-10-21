@@ -20,12 +20,8 @@ mater = {
 }
 
 space = ly / 50.
-base_height = 0.#space * 2
-base_length = lx * 2.5
 np.random.seed(12345)
-mesh = stripy.cartesian_meshes.square_mesh([0., lx, base_height, ly + base_height], space, space, 0.3)
-#base = stripy.cartesian_meshes.square_mesh([0., base_length, 0., base_height], space, space, 0)
-#pts = np.column_stack((np.append(mesh.x,base.x), np.append(mesh.y,base.y)))
+mesh = stripy.cartesian_meshes.square_mesh([0., lx, 0., ly], space, space, 0.3)
 pts = np.column_stack((mesh.x, mesh.y))
 npts = len(pts)
 print('space = %f'%space)
@@ -33,7 +29,7 @@ print('npts = %d'%npts)
 charlen = 1.5 * space
 
 t_inf = np.sqrt(ly / -g[1]) * 4.
-sigv = mater['rho'] * g[1] * ((ly + base_height - pts[:,1]) * (pts[:,0] < lx + 1.e-6) + (base_height - pts[:,1]) * (pts[:,0] > lx + 1.e-6))
+sigv = mater['rho'] * g[1] * (ly - pts[:,1])
 k0 = 1. - np.sin(np.arctan(mater['mu'])); print('k0 =',k0)
 sigh = k0 * sigv
 sigma = np.column_stack([sigh, sigv, sigh, np.zeros(npts)])
