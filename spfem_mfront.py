@@ -2,9 +2,7 @@ from minieigen import *
 from SPFEMexp import SPFEM
 import mgis.behaviour as mgis_bv
 import numpy
-from scipy.interpolate import NearestNDInterpolator, LinearNDInterpolator, CloughTocher2DInterpolator
-import sys
-sys.path.append('/home/ceguo/Downloads/optimesh-master')
+from scipy.interpolate import LinearNDInterpolator
 import optimesh
 
 intType = mgis_bv.IntegrationType.IntegrationWithElasticOperator
@@ -85,8 +83,8 @@ class Plasticity(object):
                 seg_len = numpy.linalg.norm(seg_vec)
                 if seg_len < 1.e-6:
                     continue
-                et = seg_vec / seg_len # tangential vector →
-                en = numpy.cross([0,0,1], et)[:-1] # normal vector 🡑
+                et = seg_vec / seg_len # tangential vector
+                en = numpy.cross([0,0,1], et)[:-1] # normal vector
                 gn = numpy.dot(self.__pts-seg[0], en) # normal gap, negative at contact
                 ksi = numpy.dot(self.__pts-seg[0], et) / seg_len # normalized tangential projection
                 veln = numpy.dot(vel, en)
@@ -101,91 +99,7 @@ class Plasticity(object):
                 acc += (dvel / self.__dt).reshape(-1, 1) * et                
             self.__acc = acc.reshape(-1)
             self.__vel = vel.reshape(-1)
-    """
-    def __removePoints(self):
-        pts_del = self.__spfem.removeClosePts(MatrixX(self.__pts), self.__charlen / 10.)
-        if len(pts_del) > 0:
-            print('%d pts removed...'%len(pts_del))
-        msk = numpy.ones(self.__npts, dtype=bool)
-        msk[pts_del] = False
-        self.__pts = self.__pts[msk]
-        self.__npts = len(self.__pts)
-        
-        isv = self.__materData.s1.internal_state_variables.copy() # Elastic strain tensor (4), compactivity (1), equivalent viscoplastic strain (1), viscoplastic strain tensor (4)
-        sig = self.__materData.s1.thermodynamic_forces.copy()
-        grad = self.__materData.s1.gradients.copy()
-        self.__materData = mgis_bv.MaterialDataManager(behaviour, self.__npts)
-        for s in [self.__materData.s0, self.__materData.s1]:
-            mgis_bv.setMaterialProperty(s,"YoungModulus",self.mater['young'])
-            mgis_bv.setMaterialProperty(s,"PoissonRatio",self.mater['poisson'])
-            mgis_bv.setMaterialProperty(s,"FrictionCoef",self.mater['mu'])
-            mgis_bv.setMaterialProperty(s,"Cohesion",self.mater['coh'])
-            mgis_bv.setMaterialProperty(s,"GrainDiameter",self.mater['gs'])
-            mgis_bv.setMaterialProperty(s,"EffVolExpCoef",self.mater['alpha'])
-            mgis_bv.setMaterialProperty(s,"STZPlastStrain",self.mater['eps0'])
-            mgis_bv.setMaterialProperty(s,"ExcessVol",self.mater['vz'])
-            mgis_bv.setMaterialProperty(s,"EffVolCapacity",self.mater['c0'])
-            mgis_bv.setMaterialProperty(s,"SteadyCompactivity",self.mater['chi_inf'])
-            mgis_bv.setExternalStateVariable(s,"Temperature",293.15)
-            s.internal_state_variables[:,:] = isv[msk,:]
-            s.thermodynamic_forces[:,:] = sig[msk,:]
-            s.gradients[:,:] = grad[msk,:]
-        
-        msk = numpy.repeat(msk, 2)
-        self.__acc = self.__acc[msk]
-        self.__vel = self.__vel[msk]
-        self.__disp = self.__disp[msk]
-        self.__fext = self.__fext[msk]
-        self.__fbody = self.__fbody[msk]
-        self.__dmsk = self.__dmsk[msk]
-        self.__dval = self.__dval[msk]
-        self.__mass = self.__mass[msk]
 
-    def updatePoints(self):
-        '''
-        isv = self.__materData.s1.internal_state_variables.copy() # Elastic strain tensor (4), compactivity (1), equivalent viscoplastic strain (1), viscoplastic strain tensor (4)
-        sig = self.__materData.s1.thermodynamic_forces.copy()
-        grad = self.__materData.s1.gradients.copy()
-        acc = self.__acc.reshape(-1,2)
-        vel = self.__vel.reshape(-1,2)
-        disp = self.__disp.reshape(-1,2)
-        fbody = self.__fbody.reshape(-1,2)
-        mass = self.__mass.reshape(-1,2)
-        var = numpy.column_stack([isv, sig, grad, acc, vel, disp, fbody, mass])
-        pts = self.__pts.copy()
-        interp = LinearNDInterpolator(self.__pts, var, fill_value=0., rescale=True) # from scipy.interpolate
-        '''
-        X, cells = optimesh.cpt.fixed_point_uniform(self.__pts, self.__triangles, 0., 100, omega=.8) # mesh optimization with optimesh
-        #res = interp(self.__pts)
-        #self.__acc = res[:,18:20].reshape(-1)
-        #self.__vel = res[:,20:22].reshape(-1)
-        #self.__disp = res[:,22:24].reshape(-1)
-        #self.__fbody = res[:,24:26].reshape(-1)
-        #self.__mass = res[:,26:].reshape(-1)
-        #print('max shift:',max(numpy.linalg.norm(self.__pts-pts,axis=1)))
-        #print('max vel diff:',max(numpy.linalg.norm(self.__vel.reshape(-1,2)-vel,axis=1)))
-        #self.__materData.s1.thermodynamic_forces[:,:] = res[:,10:14]
-        #mgis_bv.update(self.__materData)
-        '''
-        self.__materData = mgis_bv.MaterialDataManager(behaviour, self.__npts)
-        for s in [self.__materData.s0, self.__materData.s1]:
-            mgis_bv.setMaterialProperty(s,"YoungModulus",self.mater['young'])
-            mgis_bv.setMaterialProperty(s,"PoissonRatio",self.mater['poisson'])
-            mgis_bv.setMaterialProperty(s,"FrictionCoef",self.mater['mu'])
-            mgis_bv.setMaterialProperty(s,"Cohesion",self.mater['coh'])
-            mgis_bv.setMaterialProperty(s,"GrainDiameter",self.mater['gs'])
-            mgis_bv.setMaterialProperty(s,"EffVolExpCoef",self.mater['alpha'])
-            mgis_bv.setMaterialProperty(s,"STZPlastStrain",self.mater['eps0'])
-            mgis_bv.setMaterialProperty(s,"ExcessVol",self.mater['vz'])
-            mgis_bv.setMaterialProperty(s,"EffVolCapacity",self.mater['c0'])
-            mgis_bv.setMaterialProperty(s,"SteadyCompactivity",self.mater['chi_inf'])
-            mgis_bv.setExternalStateVariable(s,"Temperature",293.15)
-            s.internal_state_variables[:,:] = isv#res[:,:10]
-            s.thermodynamic_forces[:,:] = res[:,10:14]
-            s.gradients[:,:] = grad#res[:,14:18]
-        '''
-        self.__updateMeshBmatrixFint()
-    """
     def initTimeStep(self,Fext=None,Dmsk=None,Dval=None,FricBound=None,mu=None): # for each loading time step, do initialization
         """
         function to initialize for each time step, i.e. to set and update boundary condition
