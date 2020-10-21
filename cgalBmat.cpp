@@ -29,28 +29,10 @@ class SPFEM {
     public:
         SPFEM() {}
         ~SPFEM() {}
-        py::list removeClosePts(const Eigen::MatrixXd& pts, const double limit);
         py::tuple updateMeshBmat(const Eigen::MatrixXd& pts, const double charlen);
-	    Eigen::VectorXd calcFint(const Eigen::MatrixXd& sig);
+        Eigen::VectorXd calcFint(const Eigen::MatrixXd& sig);
         py::list calcStrain(const Eigen::VectorXd& du);
 };
-
-py::list SPFEM::removeClosePts(const Eigen::MatrixXd& pts, const double limit) {
-    npts = pts.rows();
-    points.clear();
-    for(size_t i=0; i<npts; i++)
-        points.push_back(std::make_pair(Point_2(pts(i,0),pts(i,1)),i));
-    Delaunay dt(points.begin(),points.end());
-    py::list pts_del;
-    double edge_len;
-    for(Finite_edges_iterator eit=dt.finite_edges_begin(); eit!=dt.finite_edges_end(); eit++) {
-        edge_len = CGAL::sqrt(CGAL::squared_distance(eit->first->vertex(Delaunay::cw(eit->second))->point(), 
-                                                     eit->first->vertex(Delaunay::ccw(eit->second))->point()));
-        if(edge_len < limit)
-            pts_del.append(eit->first->vertex(Delaunay::cw(eit->second))->info());
-    }
-    return pts_del;
-}
 
 py::tuple SPFEM::updateMeshBmat(const Eigen::MatrixXd& pts, const double charlen) {
     npts = pts.rows();
@@ -123,7 +105,6 @@ BOOST_PYTHON_MODULE(SPFEMexp)
     Py_Initialize();
     np::initialize();
     py::class_<SPFEM>("SPFEM", py::init<>())
-        .def("removeClosePts", &SPFEM::removeClosePts)
         .def("updateMeshBmat", &SPFEM::updateMeshBmat)
         .def("calcFint", &SPFEM::calcFint)
         .def("calcStrain", &SPFEM::calcStrain)
