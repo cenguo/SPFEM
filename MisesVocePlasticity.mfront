@@ -1,0 +1,24 @@
+@DSL Implicit; //implicit stress integration scheme
+@Behaviour MisesVocePlasticity;
+
+@Author Ning Guo;
+@Date 12 / 12 / 2020;
+
+@Algorithm NewtonRaphson;
+@Epsilon 1.e-14;
+@Theta 1;
+
+@MaterialProperty stress tau0;
+tau0.setEntryName("InitYieldStress");
+@MaterialProperty stress taur;
+taur.setEntryName("ResidualYieldStress");
+@MaterialProperty real b;
+b.setEntryName("SoftenExponent");
+
+@Brick StandardElastoViscoPlasticity{
+  stress_potential : "Hooke",
+  inelastic_flow : "Plastic" {
+    criterion : "Mises",
+    isotropic_hardening : "Voce" {R0 : "tau0", Rinf : "taur", b : "b"}
+  }
+};
